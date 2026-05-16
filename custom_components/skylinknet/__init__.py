@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 import logging
 from typing import Any
 
@@ -28,7 +29,7 @@ from .const import (
     SERVICE_ALLOW_DEVICE,
     SERVICE_FORGET_DEVICE,
 )
-from .hub import SkylinkNetHub
+from .hub import SkylinkNetDeviceState, SkylinkNetHub
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ class SkylinkNetRuntimeData:
     store: Store
     known_device_ids: set[str]
     ignored_device_ids: set[str]
+    known_device_states: dict[str, SkylinkNetDeviceState]
 
     async def async_save_known_devices(self) -> None:
         """Persist known device IDs."""
@@ -65,6 +67,7 @@ class SkylinkNetRuntimeData:
             {
                 "device_ids": sorted(self.known_device_ids),
                 "ignored_device_ids": sorted(self.ignored_device_ids),
+                "device_states": _serialize_device_states(self.known_device_states),
             }
         )
 
@@ -88,12 +91,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     stored = await store.async_load() or {}
     known_device_ids = set(stored.get("device_ids", []))
     ignored_device_ids = set(stored.get("ignored_device_ids", []))
+    known_device_states = _deserialize_device_states(stored.get("device_states", {}))
+    known_device_ids.update(known_device_states)
+    for device_id in ignored_device_ids:
+        known_device_ids.discard(device_id)
+        known_device_states.pop(device_id, None)
+    hub.devices.update(known_device_states)
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = SkylinkNetRuntimeData(
         hub=hub,
         store=store,
         known_device_ids=known_device_ids,
         ignored_device_ids=ignored_device_ids,
+        known_device_states=known_device_states,
     )
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -131,6 +141,7 @@ async def async_remove_config_entry_device(
 
     data.known_device_ids.discard(device_id)
     data.hub.devices.pop(device_id, None)
+    data.known_device_states.pop(device_id, None)
     data.ignored_device_ids.add(device_id)
     await data.async_save_known_devices()
     return True
@@ -175,6 +186,7 @@ async def _async_forget_device_service(call: ServiceCall) -> None:
         matched = True
         data.known_device_ids.discard(device_id)
         data.hub.devices.pop(device_id, None)
+        data.known_device_states.pop(device_id, None)
         if ignore_future_events:
             data.ignored_device_ids.add(device_id)
         await data.async_save_known_devices()
@@ -213,6 +225,71 @@ def _device_id_from_device_entry(device_entry: dr.DeviceEntry, hub_id: str) -> s
         if len(identifier) == 3 and identifier[:2] == (DOMAIN, hub_id):
             return identifier[2]
     return None
+
+
+def _serialize_device_states(states: dict[str, SkylinkNetDeviceState]) -> dict[str, dict[str, Any]]:
+    """Serialize last-known device states for storage."""
+    serialized: dict[str, dict[str, Any]] = {}
+    for device_id, state in states.items():
+        serialized[device_id] = {
+            "status": state.status,
+            "battery": state.battery,
+            "event_time": state.event_time,
+            "last_seen": state.last_seen.isoformat() if state.last_seen else None,
+        }
+    return serialized
+
+
+def _deserialize_device_states(data: Any) -> dict[str, SkylinkNetDeviceState]:
+    """Deserialize last-known device states from storage."""
+    if not isinstance(data, dict):
+        return {}
+
+    states: dict[str, SkylinkNetDeviceState] = {}
+    for device_id, item in data.items():
+        if not isinstance(item, dict):
+            continue
+        status = item.get("status")
+        try:
+            status = int(status)
+        except (TypeError, ValueError):
+            continue
+        states[str(device_id)] = SkylinkNetDeviceState(
+            device_id=str(device_id),
+            status=status,
+            battery=_as_optional_int(item.get("battery")),
+            event_time=_as_optional_str(item.get("event_time")),
+            last_seen=_as_datetime(item.get("last_seen")),
+        )
+    return states
+
+
+def _as_optional_int(value: Any) -> int | None:
+    """Return an integer or None."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _as_optional_str(value: Any) -> str | None:
+    """Return a string or None."""
+    return None if value is None else str(value)
+
+
+def _as_datetime(value: Any) -> datetime | None:
+    """Return a timezone-aware datetime or None."""
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
 
 
 def _matching_runtime_data(

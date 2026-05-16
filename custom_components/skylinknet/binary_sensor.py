@@ -44,10 +44,12 @@ async def async_setup_entry(
     def async_handle_device(device: SkylinkNetDeviceState) -> None:
         if device.device_id in data.ignored_device_ids:
             hub.devices.pop(device.device_id, None)
+            data.known_device_states.pop(device.device_id, None)
             return
+        data.known_device_states[device.device_id] = device
         if device.device_id not in data.known_device_ids:
             data.known_device_ids.add(device.device_id)
-            hass.async_create_task(data.async_save_known_devices())
+        hass.async_create_task(data.async_save_known_devices())
         async_add_device(device.device_id)
 
     entry.async_on_unload(hub.async_subscribe_device(async_handle_device))

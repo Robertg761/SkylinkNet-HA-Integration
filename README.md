@@ -52,6 +52,8 @@ The integration creates binary sensors dynamically when the hub sends events. Un
 
 By default, new devices use the `motion` binary sensor device class because this integration was first verified with a motion sensor. You can change the default device class in the integration options.
 
+Version `0.1.4` and newer persist the last known state for each remembered sensor. After Home Assistant restarts or the integration reloads, entities restore their last known on/off state once the SkylinkNet cloud socket reconnects instead of staying `unavailable` until the next physical sensor event.
+
 ## Removing ghost devices
 
 SkylinkNet can report old or invalid device IDs through the cloud socket. Because battery-powered sensors may only report occasionally, the integration remembers seen device IDs so they survive restarts. If a ghost device is remembered, Home Assistant may only let you disable it in the UI.
