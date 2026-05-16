@@ -35,13 +35,16 @@ async def async_setup_entry(
 
     @callback
     def async_add_device(device_id: str) -> None:
-        if device_id in known_devices:
+        if device_id in known_devices or device_id in data.ignored_device_ids:
             return
         known_devices.add(device_id)
         async_add_entities([SkylinkNetBinarySensor(hub, entry, device_id)])
 
     @callback
     def async_handle_device(device: SkylinkNetDeviceState) -> None:
+        if device.device_id in data.ignored_device_ids:
+            hub.devices.pop(device.device_id, None)
+            return
         if device.device_id not in data.known_device_ids:
             data.known_device_ids.add(device.device_id)
             hass.async_create_task(data.async_save_known_devices())
@@ -50,7 +53,7 @@ async def async_setup_entry(
     entry.async_on_unload(hub.async_subscribe_device(async_handle_device))
     for device_id in data.known_device_ids:
         async_add_device(device_id)
-    for device in hub.devices.values():
+    for device in list(hub.devices.values()):
         async_handle_device(device)
 
 

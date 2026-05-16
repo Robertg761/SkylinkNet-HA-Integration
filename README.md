@@ -52,6 +52,29 @@ The integration creates binary sensors dynamically when the hub sends events. Un
 
 By default, new devices use the `motion` binary sensor device class because this integration was first verified with a motion sensor. You can change the default device class in the integration options.
 
+## Removing ghost devices
+
+SkylinkNet can report old or invalid device IDs through the cloud socket. Because battery-powered sensors may only report occasionally, the integration remembers seen device IDs so they survive restarts. If a ghost device is remembered, Home Assistant may only let you disable it in the UI.
+
+Use the `skylinknet.forget_device` service to remove one:
+
+```yaml
+action: skylinknet.forget_device
+data:
+  skylinknet_device_id: "ABCDEF12"
+  ignore_future_events: true
+```
+
+The raw ID is shown in each entity's `device_id` attribute. Keeping `ignore_future_events` set to `true` prevents the ghost from being recreated if the SkylinkNet cloud reports it again.
+
+If you later want that ID to be discoverable again, call:
+
+```yaml
+action: skylinknet.allow_device
+data:
+  skylinknet_device_id: "ABCDEF12"
+```
+
 ## Limitations
 
 This depends on Skylink's undocumented cloud WebSocket and may break if Skylink changes the app protocol.

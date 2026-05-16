@@ -31,6 +31,7 @@ async def async_get_config_entry_diagnostics(
             "connected": hub.connected if hub else None,
             "known_device_count": len(hub.devices) if hub else 0,
             "stored_device_count": len(data.known_device_ids) if data else 0,
+            "ignored_device_count": len(data.ignored_device_ids) if data else 0,
             "keepalive_interval": hub.keepalive_interval if hub else None,
             "super_user": hub.super_user if hub else None,
         },

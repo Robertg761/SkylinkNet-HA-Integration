@@ -1,0 +1,40 @@
+forget_device:
+  name: Forget device
+  description: Remove a SkylinkNet device created from a cloud event.
+  fields:
+    skylinknet_device_id:
+      name: SkylinkNet device ID
+      description: Raw SkylinkNet device ID shown in the entity's device_id attribute.
+      required: true
+      selector:
+        text:
+    config_entry_id:
+      name: Config entry ID
+      description: Optional Home Assistant config entry ID when more than one SkylinkNet hub is configured.
+      required: false
+      selector:
+        text:
+    ignore_future_events:
+      name: Ignore future events
+      description: Keep the device from being recreated if SkylinkNet reports the same ghost ID again.
+      required: false
+      default: true
+      selector:
+        boolean:
+
+allow_device:
+  name: Allow device
+  description: Let a previously ignored SkylinkNet device be discovered again.
+  fields:
+    skylinknet_device_id:
+      name: SkylinkNet device ID
+      description: Raw SkylinkNet device ID to allow again.
+      required: true
+      selector:
+        text:
+    config_entry_id:
+      name: Config entry ID
+      description: Optional Home Assistant config entry ID when more than one SkylinkNet hub is configured.
+      required: false
+      selector:
+        text:
