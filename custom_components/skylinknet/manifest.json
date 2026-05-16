@@ -1,0 +1,12 @@
+{
+  "domain": "skylinknet",
+  "name": "SkylinkNet",
+  "after_dependencies": [],
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/Robertg761/SkylinkNet-HA-Integration",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/Robertg761/SkylinkNet-HA-Integration/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

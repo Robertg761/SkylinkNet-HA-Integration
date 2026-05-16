@@ -1,0 +1,41 @@
+{
+  "title": "SkylinkNet",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect SkylinkNet hub",
+        "description": "Enter the hub ID and hub key from your own SkylinkNet account. The key is sensitive and is used to open the SkylinkNet cloud WebSocket.",
+        "data": {
+          "hub_id": "Hub ID",
+          "hub_key": "Hub key",
+          "default_device_class": "Default binary sensor class"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to SkylinkNet.",
+      "invalid_auth": "The hub ID or hub key was rejected by SkylinkNet.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "This SkylinkNet hub is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "SkylinkNet options",
+        "data": {
+          "default_device_class": "Default binary sensor class"
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "device": {
+        "name": "Sensor {device_id}"
+      }
+    }
+  }
+}
