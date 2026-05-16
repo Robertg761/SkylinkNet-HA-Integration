@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import logging
+from typing import Any
 
 import voluptuous as vol
 
@@ -116,6 +117,25 @@ async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry) -> Non
     await hass.config_entries.async_reload(entry.entry_id)
 
 
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: ConfigEntry, device_entry: dr.DeviceEntry
+) -> bool:
+    """Allow users to remove a SkylinkNet device from the UI."""
+    data: SkylinkNetRuntimeData | None = hass.data.get(DOMAIN, {}).get(entry.entry_id)
+    if data is None:
+        return False
+
+    device_id = _device_id_from_device_entry(device_entry, data.hub.hub_id)
+    if device_id is None:
+        return False
+
+    data.known_device_ids.discard(device_id)
+    data.hub.devices.pop(device_id, None)
+    data.ignored_device_ids.add(device_id)
+    await data.async_save_known_devices()
+    return True
+
+
 def _async_register_services(hass: HomeAssistant) -> None:
     """Register SkylinkNet management services."""
     if not hass.services.has_service(DOMAIN, SERVICE_FORGET_DEVICE):
@@ -182,6 +202,19 @@ async def _async_allow_device_service(call: ServiceCall) -> None:
         raise HomeAssistantError(f"SkylinkNet device {device_id} was not ignored")
 
 
+def _device_id_from_device_entry(device_entry: dr.DeviceEntry, hub_id: str) -> str | None:
+    """Return the SkylinkNet device ID from a Home Assistant device entry."""
+    for identifier in device_entry.identifiers:
+        if len(identifier) == 2 and identifier[0] == DOMAIN:
+            unique_id = identifier[1]
+            prefix = f"{hub_id}_"
+            if unique_id.startswith(prefix):
+                return unique_id.removeprefix(prefix)
+        if len(identifier) == 3 and identifier[:2] == (DOMAIN, hub_id):
+            return identifier[2]
+    return None
+
+
 def _matching_runtime_data(
     hass: HomeAssistant, config_entry_id: str | None
 ) -> list[tuple[str, SkylinkNetRuntimeData]]:
@@ -203,9 +236,7 @@ def _async_registry_has_device(hass: HomeAssistant, hub_id: str, device_id: str)
         return True
 
     device_registry = dr.async_get(hass)
-    return (
-        device_registry.async_get_device(identifiers={(DOMAIN, hub_id, device_id)}) is not None
-    )
+    return _async_get_device_entry(device_registry, hub_id, device_id) is not None
 
 
 def _async_remove_from_registries(hass: HomeAssistant, hub_id: str, device_id: str) -> None:
@@ -218,9 +249,27 @@ def _async_remove_from_registries(hass: HomeAssistant, hub_id: str, device_id: s
         entity_registry.async_remove(entity_id)
 
     device_registry = dr.async_get(hass)
-    device_entry = device_registry.async_get_device(identifiers={(DOMAIN, hub_id, device_id)})
+    device_entry = _async_get_device_entry(device_registry, hub_id, device_id)
     if device_entry:
         device_registry.async_remove_device(device_entry.id)
+
+
+def _async_get_device_entry(
+    device_registry: dr.DeviceRegistry, hub_id: str, device_id: str
+) -> dr.DeviceEntry | None:
+    """Return a device entry by current or legacy SkylinkNet identifiers."""
+    for identifiers in _device_identifier_sets(hub_id, device_id):
+        if device_entry := device_registry.async_get_device(identifiers=identifiers):
+            return device_entry
+    return None
+
+
+def _device_identifier_sets(hub_id: str, device_id: str) -> tuple[set[tuple[Any, ...]], ...]:
+    """Return current and legacy SkylinkNet device registry identifiers."""
+    return (
+        {(DOMAIN, _unique_id(hub_id, device_id))},
+        {(DOMAIN, hub_id, device_id)},
+    )
 
 
 def _unique_id(hub_id: str, device_id: str) -> str:

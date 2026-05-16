@@ -100,7 +100,7 @@ class SkylinkNetBinarySensor(BinarySensorEntity):
     def device_info(self) -> dict[str, object]:
         """Return device registry information."""
         return {
-            "identifiers": {(DOMAIN, self._hub.hub_id, self._device_id)},
+            "identifiers": {(DOMAIN, f"{self._hub.hub_id}_{self._device_id}")},
             "name": f"SkylinkNet {_short_device_id(self._device_id)}",
             "manufacturer": "Skylink",
             "model": "SkylinkNet sensor",

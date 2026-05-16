@@ -56,6 +56,8 @@ By default, new devices use the `motion` binary sensor device class because this
 
 SkylinkNet can report old or invalid device IDs through the cloud socket. Because battery-powered sensors may only report occasionally, the integration remembers seen device IDs so they survive restarts. If a ghost device is remembered, Home Assistant may only let you disable it in the UI.
 
+After updating to version `0.1.2` or newer and restarting Home Assistant, remove ghost entries from the device page, not the entity page. Home Assistant only enables deletion for devices when an integration explicitly supports device removal.
+
 Use the `skylinknet.forget_device` service to remove one:
 
 ```yaml
